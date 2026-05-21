@@ -182,17 +182,18 @@
 
     // Set up MutationObserver for infinite scroll
     const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1) { // Element node
-                    processNode(node);
-                }
-            });
-        });
+        let timeout;
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            runFilter();
+        }, 300);
     });
 
     // Start observing
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Fallback Polling (Every 2 seconds) for cases where MutationObserver might miss something
+    setInterval(runFilter, 2000);
 
     // Initial run
     runFilter();
