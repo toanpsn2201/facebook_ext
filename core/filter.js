@@ -104,73 +104,53 @@
     }
 
     function isUnwanted(post) {
-        // Check Ad Selectors
-        for (let selector of config.adSelectors) {
-            if (post.querySelector(selector)) return true;
-        }
-
-        // Check Suggested Page Selectors
-        for (let selector of config.suggestedPageSelectors) {
-            if (post.querySelector(selector)) return true;
-        }
-
-        // Check Keywords in text
         const postText = post.innerText || "";
-        for (let keyword of config.suggestedKeywords) {
-            if (postText.includes(keyword)) return true;
+        
+        // 1. Check Keywords in text (Deep scanning)
+        const allKeywords = [...config.suggestedKeywords, "Sponsored", "Được tài trợ", "Follow", "Theo dõi"];
+        for (let keyword of allKeywords) {
+            if (postText.includes(keyword)) {
+                log(`Found unwanted keyword: ${keyword}`);
+                return true;
+            }
+        }
+
+        // 2. Check Ad-Rendering Specific Roles (Secondary signal)
+        for (let selector of config.adSelectors) {
+            if (post.querySelector(selector)) {
+                log(`Found unwanted selector: ${selector}`);
+                return true;
+            }
         }
 
         return false;
     }
 
-    function findPostContainer(element) {
-        // Find the closest logical container for a post
-        return element.closest(config.postContainerSelector) || element.closest("[role='article']") || element.closest("[data-pagelet]");
-    }
-
     function processNode(node) {
-        // Bottom-up detection: find signals first, then find their containers
-        let signals = [];
+        // Find all potential post containers
+        const posts = node.querySelectorAll ? node.querySelectorAll(config.postContainerSelector) : [];
         
-        // Combine all selectors to look for signals
-        const allSelectors = [...config.adSelectors, ...config.suggestedPageSelectors];
-        
-        allSelectors.forEach(selector => {
-            const elements = node.querySelectorAll ? node.querySelectorAll(selector) : [];
-            elements.forEach(el => signals.push(el));
-        });
+        // If the node itself is a post container
+        if (node.matches && node.matches(config.postContainerSelector)) {
+            posts.push(node);
+        }
 
-        // Also check keywords in the node itself if it's small, or its children
-        config.suggestedKeywords.forEach(keyword => {
-            if (node.innerText && node.innerText.includes(keyword)) {
-                // If the node is already a post, add it. If not, we'll find its container.
-                signals.push(node);
-            }
-        });
+        posts.forEach(post => {
+            if (post.hasAttribute('data-fb-filter-checked')) return;
 
-        signals.forEach(signal => {
-            const post = findPostContainer(signal);
-            if (post && !post.hasAttribute('data-fb-filter-checked')) {
+            if (isUnwanted(post)) {
                 post.setAttribute('data-fb-filter-checked', 'true');
-                log("Removing unwanted post (Bottom-up detection)...");
+                log("Removing unwanted post...");
                 post.innerHTML = "";
                 post.appendChild(createRemovalBar());
                 updateCounter();
-            }
-        });
-
-        // Mark regular posts as checked so we don't re-scan them
-        const allPosts = node.querySelectorAll ? node.querySelectorAll(config.postContainerSelector) : [];
-        allPosts.forEach(p => {
-            if (!p.hasAttribute('data-fb-filter-checked')) {
-                // We don't mark as checked immediately here because we want to allow signals 
-                // inside to trigger removal. We only mark them if they've been scanned.
-                // For now, let's just mark them after a short delay or if they are "clean"
+            } else {
+                // If it's a clean post, we mark it after a delay to ensure lazy elements are loaded
                 setTimeout(() => {
-                    if (p && !p.innerHTML.includes("fb-filter-removed-bar")) {
-                        p.setAttribute('data-fb-filter-checked', 'true');
+                    if (post && !post.innerHTML.includes("fb-filter-removed-bar")) {
+                        post.setAttribute('data-fb-filter-checked', 'true');
                     }
-                }, 1000);
+                }, 3000);
             }
         });
     }
