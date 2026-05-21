@@ -126,33 +126,64 @@
         return false;
     }
 
-    function processNode(node) {
-        // Find all potential post containers
-        const posts = node.querySelectorAll ? node.querySelectorAll(config.postContainerSelector) : [];
-        
-        // If the node itself is a post container
-        if (node.matches && node.matches(config.postContainerSelector)) {
-            posts.push(node);
+    function findPostContainer(element) {
+        // 1. Try standard selectors first
+        const standard = element.closest(config.postContainerSelector) || 
+                         element.closest("[role='article']") || 
+                         element.closest("[data-pagelet]");
+        if (standard) return standard;
+
+        // 2. Heuristic: Climb up to find a direct child of a feed-like container
+        let current = element;
+        let depth = 0;
+        while (current && depth < 15 && current.tagName !== 'BODY') {
+            const parent = current.parentElement;
+            if (parent) {
+                // If the parent looks like a feed container
+                if (parent.getAttribute('role') === 'feed' || 
+                    parent.className.includes('feed') ||
+                    (parent.children.length > 5 && Array.from(parent.children).every(c => c.tagName === 'DIV'))) {
+                    return current;
+                }
+            }
+            current = parent;
+            depth++;
         }
+        return null;
+    }
+
+    function processNode(node) {
+        // Strategy A: Find by known post containers
+        const posts = node.querySelectorAll ? node.querySelectorAll(config.postContainerSelector) : [];
+        if (node.matches && node.matches(config.postContainerSelector)) posts.push(node);
 
         posts.forEach(post => {
             if (post.hasAttribute('data-fb-filter-checked')) return;
-
             if (isUnwanted(post)) {
                 post.setAttribute('data-fb-filter-checked', 'true');
                 log("Removing unwanted post...");
                 post.innerHTML = "";
                 post.appendChild(createRemovalBar());
                 updateCounter();
-            } else {
-                // If it's a clean post, we mark it after a delay to ensure lazy elements are loaded
-                setTimeout(() => {
-                    if (post && !post.innerHTML.includes("fb-filter-removed-bar")) {
-                        post.setAttribute('data-fb-filter-checked', 'true');
-                    }
-                }, 3000);
             }
         });
+
+        // Strategy B: Deep search for signals and find their containers (for cases where role='article' fails)
+        const allKeywords = ["Sponsored", "Được tài trợ", "Follow", "Theo dõi"];
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
+        let textNode;
+        while(textNode = walker.nextNode()) {
+            if (allKeywords.some(k => textNode.textContent.includes(k))) {
+                const post = findPostContainer(textNode.parentElement);
+                if (post && !post.hasAttribute('data-fb-filter-checked')) {
+                    post.setAttribute('data-fb-filter-checked', 'true');
+                    log("Removing unwanted post (Heuristic detection)...");
+                    post.innerHTML = "";
+                    post.appendChild(createRemovalBar());
+                    updateCounter();
+                }
+            }
+        }
     }
 
     function runFilter() {
