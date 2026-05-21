@@ -1,6 +1,6 @@
 (function() {
     let config = {
-        remoteConfigUrl: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/core/config.json",
+        remoteConfigUrl: "https://raw.githubusercontent.com/toanpsn2201/facebook_ext/main/core/config.json",
         postContainerSelector: "div[data-pagelet^='FeedUnit_'], div[role='article']",
         adSelectors: [
             "a[href*='/ads/about']",
@@ -15,14 +15,63 @@
         removalText: "🛡️ Đã xóa nội dung quảng cáo/gợi ý"
     };
 
+    let blockedCount = 0;
+    let statusUI = null;
+
     function log(msg) {
         console.log("[FB-Filter] " + msg);
+    }
+
+    function createStatusUI() {
+        if (document.getElementById('fb-filter-status')) return;
+        
+        const container = document.createElement("div");
+        container.id = "fb-filter-status";
+        container.style.position = "fixed";
+        container.style.bottom = "20px";
+        container.style.right = "20px";
+        container.style.zIndex = "9999";
+        container.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+        container.style.color = "white";
+        container.style.padding = "8px 12px";
+        container.style.borderRadius = "20px";
+        container.style.display = "flex";
+        container.style.alignItems = "center";
+        container.style.fontSize = "12px";
+        container.style.fontFamily = "Arial, sans-serif";
+        container.style.pointerEvents = "none";
+        container.style.transition = "opacity 0.3s";
+
+        const dot = document.createElement("div");
+        dot.style.width = "8px";
+        dot.style.height = "8px";
+        dot.style.backgroundColor = "#42b72a";
+        dot.style.borderRadius = "50%";
+        dot.style.marginRight = "8px";
+        dot.style.boxShadow = "0 0 5px #42b72a";
+
+        const text = document.createElement("span");
+        text.id = "fb-filter-count-text";
+        text.innerText = "FB Filter: 0";
+
+        container.appendChild(dot);
+        container.appendChild(text);
+        document.body.appendChild(container);
+        statusUI = container;
+    }
+
+    function updateCounter() {
+        blockedCount++;
+        const text = document.getElementById("fb-filter-count-text");
+        if (text) {
+            text.innerText = `FB Filter: ${blockedCount}`;
+        }
     }
 
     async function fetchRemoteConfig() {
         if (!config.remoteConfigUrl || config.remoteConfigUrl.includes("YOUR_USER")) return;
         try {
-            const response = await fetch(config.remoteConfigUrl);
+            const response = await fetch(config.remoteConfigUrl + "?t=" + Date.now());
             if (!response.ok) throw new Error("Fetch failed");
             const newConfig = await response.json();
             Object.assign(config, newConfig);
@@ -65,8 +114,6 @@
             if (postText.includes(keyword)) return true;
         }
 
-        // Special check for 'Sponsored' text hidden in nested spans (FB common tactic)
-        // This is a basic check; a more advanced one would look for visually rendered text
         return false;
     }
 
@@ -78,12 +125,14 @@
             log("Removing unwanted post...");
             post.innerHTML = "";
             post.appendChild(createRemovalBar());
+            updateCounter();
         }
     }
 
     function runFilter() {
         const posts = document.querySelectorAll(config.postContainerSelector);
         posts.forEach(processPost);
+        createStatusUI();
     }
 
     // Set up MutationObserver for infinite scroll
