@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Facebook Feed Filter",
+  "version": "1.0",
+  "description": "Filters ads and suggested posts from your Facebook feed.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.facebook.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["core-filter.js"],
+      "matches": ["*://*.facebook.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "FB Filter Status"
+  }
+}

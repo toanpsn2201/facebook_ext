@@ -1,0 +1,23 @@
+# MacOS
+.DS_Store
+
+# Xcode
+build/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+
+# Chrome Extension
+*.crx
+*.pem
+
+# IDEs
+.vscode/
+.idea/

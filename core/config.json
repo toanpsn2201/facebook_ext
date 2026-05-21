@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "postContainerSelector": "div[data-pagelet^='FeedUnit_'], div[role='article']",
+  "adSelectors": [
+    "span[aria-labelledby]",
+    "a[href*='/ads/about']",
+    "a[aria-label='Sponsored']",
+    "a[aria-label='Được tài trợ']"
+  ],
+  "suggestedPageSelectors": [
+    "div[aria-label='Follow']",
+    "div[aria-label='Theo dõi']",
+    "span:contains('Suggested for you')",
+    "span:contains('Gợi ý cho bạn')"
+  ],
+  "removalText": "🛡️ Đã xóa nội dung quảng cáo/gợi ý"
+}
