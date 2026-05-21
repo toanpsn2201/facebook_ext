@@ -3,13 +3,19 @@
         remoteConfigUrl: "https://raw.githubusercontent.com/toanpsn2201/facebook_ext/main/core/config.json",
         postContainerSelector: "div[data-pagelet^='FeedUnit_'], div[role='article']",
         adSelectors: [
+            "[data-ad-rendering-role='like_button']",
+            "[data-ad-rendering-role='comment_button']",
+            "[data-ad-rendering-role='share_button']",
             "a[href*='/ads/about']",
             "a[aria-label='Sponsored']",
-            "a[aria-label='Được tài trợ']"
+            "a[aria-label='Được tài trợ']",
+            "svg > use[href*='sponsored']"
         ],
         suggestedPageSelectors: [
             "div[aria-label='Follow']",
-            "div[aria-label='Theo dõi']"
+            "div[aria-label='Theo dõi']",
+            "div[aria-label='Suggested for you']",
+            "div[aria-label='Gợi ý cho bạn']"
         ],
         suggestedKeywords: ["Suggested for you", "Gợi ý cho bạn"],
         removalText: "🛡️ Đã xóa nội dung quảng cáo/gợi ý"
