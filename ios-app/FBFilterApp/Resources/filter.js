@@ -117,21 +117,60 @@
         return false;
     }
 
-    function processPost(post) {
-        if (post.hasAttribute('data-fb-filter-checked')) return;
-        post.setAttribute('data-fb-filter-checked', 'true');
+    function findPostContainer(element) {
+        // Find the closest logical container for a post
+        return element.closest(config.postContainerSelector) || element.closest("[role='article']") || element.closest("[data-pagelet]");
+    }
 
-        if (isUnwanted(post)) {
-            log("Removing unwanted post...");
-            post.innerHTML = "";
-            post.appendChild(createRemovalBar());
-            updateCounter();
-        }
+    function processNode(node) {
+        // Bottom-up detection: find signals first, then find their containers
+        let signals = [];
+        
+        // Combine all selectors to look for signals
+        const allSelectors = [...config.adSelectors, ...config.suggestedPageSelectors];
+        
+        allSelectors.forEach(selector => {
+            const elements = node.querySelectorAll ? node.querySelectorAll(selector) : [];
+            elements.forEach(el => signals.push(el));
+        });
+
+        // Also check keywords in the node itself if it's small, or its children
+        config.suggestedKeywords.forEach(keyword => {
+            if (node.innerText && node.innerText.includes(keyword)) {
+                // If the node is already a post, add it. If not, we'll find its container.
+                signals.push(node);
+            }
+        });
+
+        signals.forEach(signal => {
+            const post = findPostContainer(signal);
+            if (post && !post.hasAttribute('data-fb-filter-checked')) {
+                post.setAttribute('data-fb-filter-checked', 'true');
+                log("Removing unwanted post (Bottom-up detection)...");
+                post.innerHTML = "";
+                post.appendChild(createRemovalBar());
+                updateCounter();
+            }
+        });
+
+        // Mark regular posts as checked so we don't re-scan them
+        const allPosts = node.querySelectorAll ? node.querySelectorAll(config.postContainerSelector) : [];
+        allPosts.forEach(p => {
+            if (!p.hasAttribute('data-fb-filter-checked')) {
+                // We don't mark as checked immediately here because we want to allow signals 
+                // inside to trigger removal. We only mark them if they've been scanned.
+                // For now, let's just mark them after a short delay or if they are "clean"
+                setTimeout(() => {
+                    if (p && !p.innerHTML.includes("fb-filter-removed-bar")) {
+                        p.setAttribute('data-fb-filter-checked', 'true');
+                    }
+                }, 1000);
+            }
+        });
     }
 
     function runFilter() {
-        const posts = document.querySelectorAll(config.postContainerSelector);
-        posts.forEach(processPost);
+        processNode(document.body);
         createStatusUI();
     }
 
@@ -140,13 +179,7 @@
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === 1) { // Element node
-                    // Check if the node itself is a post or contains posts
-                    if (node.matches && node.matches(config.postContainerSelector)) {
-                        processPost(node);
-                    } else {
-                        const nestedPosts = node.querySelectorAll(config.postContainerSelector);
-                        nestedPosts.forEach(processPost);
-                    }
+                    processNode(node);
                 }
             });
         });
